@@ -166,6 +166,9 @@
     </div>
     
     <script>
+        // Use /admin/api/ prefix for all API calls
+        const API_BASE = '/admin/api';
+        
         async function fetchJSON(url) {
             const response = await fetch(url);
             if (!response.ok) {
@@ -176,9 +179,9 @@
         
         async function loadDashboard() {
             try {
-                const stats = await fetchJSON('/admin/stats');
-                const topMerchants = await fetchJSON('/admin/top-merchants?limit=5');
-                const inactive = await fetchJSON('/admin/inactive-merchants');
+                const stats = await fetchJSON(`${API_BASE}/stats`);
+                const topMerchants = await fetchJSON(`${API_BASE}/top-merchants?limit=5`);
+                const inactive = await fetchJSON(`${API_BASE}/inactive-merchants`);
                 
                 const html = `
                     <div class="stats-grid">
@@ -216,7 +219,7 @@
                         </div>
                         ${topMerchants.length === 0 ? '<p>No merchants found</p>' : `
                             <div style="overflow-x: auto;">
-                                <table>
+                                </table>
                                     <thead>
                                         <tr><th>Shop Name</th><th>Phone</th><th>Orders</th><th>Revenue</th></tr>
                                     </thead>
@@ -241,6 +244,8 @@
                         </div>
                         <div style="display: flex; gap: 10px; flex-wrap: wrap;">
                             <button class="btn" onclick="window.location.href='/admin/products'">📦 Manage Product Database</button>
+                            <button class="btn" onclick="exportMerchants()">📊 Export Merchants CSV</button>
+                            <button class="btn" onclick="exportOrders()">📋 Export Orders CSV</button>
                         </div>
                     </div>
                 `;
@@ -256,6 +261,14 @@
                     </div>
                 `;
             }
+        }
+        
+        async function exportMerchants() {
+            window.location.href = `${API_BASE}/export-merchants`;
+        }
+        
+        async function exportOrders() {
+            window.location.href = `${API_BASE}/export-orders`;
         }
         
         function escapeHtml(text) {
