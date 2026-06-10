@@ -182,7 +182,7 @@ app.use(session({
     resave: false,
     saveUninitialized: true,
     cookie: {
-        secure: false,  // Important for Render
+        secure: false,
         httpOnly: true,
         maxAge: 1000 * 60 * 60 * 24,
         sameSite: 'lax'
@@ -304,7 +304,7 @@ app.get('/logout', (req, res) => { req.session.destroy(); res.redirect('/'); });
 
 // ==================== ADMIN ROUTES ====================
 
-// Simple admin login handler
+// Simple admin login handler (using the imported requireAdmin)
 app.post('/admin/login', (req, res) => {
     const { email, password } = req.body;
     const admin = db.prepare('SELECT * FROM admins WHERE email = ?').get(email);
@@ -324,18 +324,13 @@ app.get('/admin/logout', (req, res) => {
     res.redirect('/admin/login');
 });
 
-// Admin middleware
-function requireAdmin(req, res, next) {
-    if (!req.session || !req.session.adminId) {
-        return res.status(401).json({ error: 'Admin access required. Please login first.' });
-    }
-    next();
-}
-
 // Serve admin pages
 app.get('/admin/login', (req, res) => { res.sendFile(path.join(__dirname, 'public/admin/login.html')); });
 app.get('/admin/dashboard', requireAdmin, (req, res) => { res.sendFile(path.join(__dirname, 'public/admin/dashboard.html')); });
 app.get('/admin/products', requireAdmin, (req, res) => { res.sendFile(path.join(__dirname, 'public/admin/products.html')); });
+
+// Use admin routes from routes/admin.js
+app.use('/admin/api', adminRoutes);
 
 // ==================== CENTRAL PRODUCTS API ====================
 
