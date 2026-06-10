@@ -14,6 +14,7 @@
         .product-card { background: white; border-radius: 15px; padding: 15px; margin-bottom: 15px; display: flex; align-items: center; gap: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
         .product-image { width: 70px; height: 70px; background: #f0f0f0; border-radius: 10px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
         .product-image img { width: 100%; height: 100%; object-fit: cover; }
+        .product-image span { font-size: 30px; }
         .product-info { flex: 1; }
         .product-name { font-weight: bold; margin-bottom: 5px; }
         .product-barcode { font-size: 12px; color: #999; }
@@ -24,13 +25,21 @@
         .delete-btn { background: #dc3545; color: white; }
         .back-btn { background: #666; color: white; padding: 12px; border: none; border-radius: 10px; width: 100%; font-size: 16px; cursor: pointer; margin-top: 10px; }
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000; }
-        .modal-content { background: white; border-radius: 20px; padding: 20px; width: 90%; max-width: 400px; }
-        .modal-content h3 { margin-bottom: 15px; }
-        .modal-content input, .modal-content select { width: 100%; padding: 12px; margin-bottom: 10px; border: 2px solid #e0e0e0; border-radius: 10px; }
+        .modal-content { background: white; border-radius: 20px; padding: 20px; width: 90%; max-width: 400px; max-height: 85vh; overflow-y: auto; }
+        .modal-content h3 { margin-bottom: 15px; color: #333; }
+        .modal-content input { width: 100%; padding: 12px; margin-bottom: 10px; border: 2px solid #e0e0e0; border-radius: 10px; }
         .modal-buttons { display: flex; gap: 10px; margin-top: 15px; }
-        .save-btn { background: #FFD700; padding: 10px; border: none; border-radius: 8px; flex: 1; cursor: pointer; }
+        .save-btn { background: #FFD700; padding: 10px; border: none; border-radius: 8px; flex: 1; cursor: pointer; font-weight: bold; }
         .cancel-btn { background: #999; color: white; padding: 10px; border: none; border-radius: 8px; flex: 1; cursor: pointer; }
         .loading { text-align: center; padding: 40px; color: #999; }
+        .scan-barcode-btn { background: #00b894; color: white; padding: 10px; border: none; border-radius: 8px; cursor: pointer; margin-bottom: 10px; width: 100%; font-weight: bold; }
+        .barcode-scanner { background: #000; border-radius: 10px; overflow: hidden; margin-bottom: 10px; display: none; }
+        .barcode-scanner.active { display: block; }
+        #scannerVideo { width: 100%; height: 200px; object-fit: cover; }
+        .stop-scan-btn { background: #dc3545; color: white; padding: 8px; border: none; border-radius: 8px; margin-top: 5px; width: 100%; }
+        .info-note { background: #e3f2fd; padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 12px; color: #1565c0; }
+        .found-product { background: #e8f5e9; padding: 10px; border-radius: 8px; margin-bottom: 10px; display: none; }
+        .found-product.active { display: block; }
     </style>
 </head>
 <body>
@@ -45,22 +54,41 @@
     
     <button class="back-btn" onclick="window.location.href='/merchant-dashboard'">← Back to Dashboard</button>
     
+    <!-- Add Product Modal -->
     <div id="addModal" class="modal">
         <div class="modal-content">
             <h3>Add New Product</h3>
-            <input type="text" id="productBarcode" placeholder="Barcode">
+            <div class="info-note">
+                🔍 Scan barcode to auto-fill product details from our database. Then just set your price!
+            </div>
+            
+            <button class="scan-barcode-btn" onclick="toggleBarcodeScanner()">📷 Scan Barcode</button>
+            
+            <div id="barcodeScanner" class="barcode-scanner">
+                <video id="scannerVideo" autoplay playsinline></video>
+                <button class="stop-scan-btn" onclick="stopBarcodeScanner()">Stop Scanning</button>
+            </div>
+            
+            <div id="foundProductInfo" class="found-product"></div>
+            
+            <input type="text" id="productBarcode" placeholder="Barcode (scan or type)">
             <input type="text" id="productName" placeholder="Product Name">
-            <input type="number" id="productPrice" placeholder="Price (R)">
+            <input type="number" id="productPrice" placeholder="Your Price (R)">
             <input type="file" id="productPicture" accept="image/*">
             <div class="modal-buttons">
-                <button class="save-btn" onclick="addProduct()">Save</button>
+                <button class="save-btn" onclick="addProduct()">Save Product</button>
                 <button class="cancel-btn" onclick="closeModal()">Cancel</button>
             </div>
         </div>
     </div>
     
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
     <script>
         let products = [];
+        let barcodeScannerActive = false;
+        let scannerStream = null;
+        let scannerAnimationId = null;
+        
         async function loadProducts() {
             try {
                 const response = await fetch('/api/merchant/products');
@@ -70,6 +98,7 @@
                 document.getElementById('products-container').innerHTML = '<div class="loading">Error loading products</div>';
             }
         }
+        
         function displayProducts() {
             const container = document.getElementById('products-container');
             if (products.length === 0) {
@@ -78,9 +107,11 @@
             }
             container.innerHTML = products.map(product => `
                 <div class="product-card">
-                    <div class="product-image">${product.picture ? `<img src="${product.picture}">` : '📦'}</div>
+                    <div class="product-image">
+                        ${product.picture ? `<img src="${product.picture}">` : (product.central_image ? `<img src="${product.central_image}" onerror="this.style.display='none';this.nextSibling.style.display='flex'"><span style="display:none">📦</span>` : `<span>📦</span>`)}
+                    </div>
                     <div class="product-info">
-                        <div class="product-name">${product.name}</div>
+                        <div class="product-name">${escapeHtml(product.name)}</div>
                         <div class="product-barcode">Barcode: ${product.barcode}</div>
                         <div class="product-price">R${product.price}</div>
                     </div>
@@ -91,36 +122,178 @@
                 </div>
             `).join('');
         }
-        function showAddModal() { document.getElementById('addModal').style.display = 'flex'; }
+        
+        async function toggleBarcodeScanner() {
+            const scannerDiv = document.getElementById('barcodeScanner');
+            if (barcodeScannerActive) {
+                stopBarcodeScanner();
+            } else {
+                await startBarcodeScanner();
+            }
+        }
+        
+        async function startBarcodeScanner() {
+            const scannerDiv = document.getElementById('barcodeScanner');
+            const video = document.getElementById('scannerVideo');
+            
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                scannerStream = stream;
+                video.srcObject = stream;
+                video.play();
+                
+                scannerDiv.classList.add('active');
+                barcodeScannerActive = true;
+                
+                function scanFrame() {
+                    if (!barcodeScannerActive || video.readyState !== 4 || !video.videoWidth) {
+                        if (barcodeScannerActive) scannerAnimationId = requestAnimationFrame(scanFrame);
+                        return;
+                    }
+                    
+                    const canvas = document.createElement('canvas');
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    
+                    const code = jsQR(imgData.data, imgData.width, imgData.height);
+                    if (code && code.data) {
+                        document.getElementById('productBarcode').value = code.data;
+                        lookupProduct(code.data);
+                        stopBarcodeScanner();
+                    }
+                    
+                    scannerAnimationId = requestAnimationFrame(scanFrame);
+                }
+                
+                scanFrame();
+                
+            } catch (err) {
+                alert('Camera error: ' + err.message);
+            }
+        }
+        
+        async function lookupProduct(barcode) {
+            const foundDiv = document.getElementById('foundProductInfo');
+            try {
+                const response = await fetch(`/api/product/lookup/${barcode}`);
+                const data = await response.json();
+                
+                if (data.found) {
+                    document.getElementById('productName').value = data.product_name;
+                    foundDiv.innerHTML = `
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            ${data.default_image ? `<img src="${data.default_image}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 8px;" onerror="this.style.display='none'">` : ''}
+                            <div>
+                                <strong>${escapeHtml(data.product_name)}</strong><br>
+                                ${data.brand ? `Brand: ${escapeHtml(data.brand)}` : ''}
+                            </div>
+                        </div>
+                    `;
+                    foundDiv.classList.add('active');
+                    alert(`✓ Product found in database!\nProduct: ${data.product_name}\nBrand: ${data.brand || 'N/A'}\n\nNow enter your price.`);
+                } else {
+                    foundDiv.innerHTML = `<p style="color: #dc3545;">❌ Product not found. Please enter details manually.</p>`;
+                    foundDiv.classList.add('active');
+                    alert('Product not found in database. Please enter product name manually.\n\n(You can ask admin to add it to the central database)');
+                    document.getElementById('productName').focus();
+                }
+            } catch (error) {
+                alert('Error looking up product');
+            }
+        }
+        
+        function stopBarcodeScanner() {
+            const scannerDiv = document.getElementById('barcodeScanner');
+            const video = document.getElementById('scannerVideo');
+            
+            if (scannerStream) {
+                scannerStream.getTracks().forEach(track => track.stop());
+                scannerStream = null;
+            }
+            if (scannerAnimationId) {
+                cancelAnimationFrame(scannerAnimationId);
+                scannerAnimationId = null;
+            }
+            video.srcObject = null;
+            scannerDiv.classList.remove('active');
+            barcodeScannerActive = false;
+        }
+        
+        function showAddModal() {
+            document.getElementById('addModal').style.display = 'flex';
+        }
+        
         function closeModal() {
+            stopBarcodeScanner();
             document.getElementById('addModal').style.display = 'none';
             document.getElementById('productBarcode').value = '';
             document.getElementById('productName').value = '';
             document.getElementById('productPrice').value = '';
             document.getElementById('productPicture').value = '';
+            document.getElementById('foundProductInfo').classList.remove('active');
+            document.getElementById('foundProductInfo').innerHTML = '';
         }
+        
         async function addProduct() {
+            const barcode = document.getElementById('productBarcode').value;
+            const name = document.getElementById('productName').value;
+            const price = document.getElementById('productPrice').value;
+            
+            if (!barcode || !name || !price) {
+                alert('Please fill in all fields');
+                return;
+            }
+            
             const formData = new FormData();
-            formData.append('barcode', document.getElementById('productBarcode').value);
-            formData.append('name', document.getElementById('productName').value);
-            formData.append('price', document.getElementById('productPrice').value);
+            formData.append('barcode', barcode);
+            formData.append('name', name);
+            formData.append('price', price);
             formData.append('picture', document.getElementById('productPicture').files[0]);
+            
             try {
                 const response = await fetch('/api/merchant/products', { method: 'POST', body: formData });
-                if (response.ok) { alert('Product added successfully'); closeModal(); loadProducts(); }
-                else { const error = await response.json(); alert(error.error || 'Error adding product'); }
-            } catch (error) { alert('Error adding product'); }
+                if (response.ok) {
+                    alert('Product added successfully!');
+                    closeModal();
+                    loadProducts();
+                } else {
+                    const error = await response.json();
+                    alert(error.error || 'Error adding product');
+                }
+            } catch (error) {
+                alert('Error adding product');
+            }
         }
+        
         async function deleteProduct(id) {
             if (confirm('Are you sure you want to delete this product?')) {
                 try {
                     const response = await fetch(`/api/merchant/products/${id}`, { method: 'DELETE' });
-                    if (response.ok) { alert('Product deleted successfully'); loadProducts(); }
-                    else { alert('Error deleting product'); }
-                } catch (error) { alert('Error deleting product'); }
+                    if (response.ok) {
+                        alert('Product deleted successfully');
+                        loadProducts();
+                    } else {
+                        alert('Error deleting product');
+                    }
+                } catch (error) {
+                    alert('Error deleting product');
+                }
             }
         }
-        function editProduct(id) { window.location.href = `/merchant-product-edit?id=${id}`; }
+        
+        function editProduct(id) {
+            window.location.href = `/merchant-product-edit?id=${id}`;
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
         loadProducts();
     </script>
 </body>

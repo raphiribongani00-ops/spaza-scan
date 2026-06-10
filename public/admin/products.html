@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Product Database - Admin</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; padding: 20px; }
+        .header { background: #FFD700; padding: 20px; border-radius: 15px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+        .header h1 { color: #333; font-size: 24px; }
+        .nav-links a { color: #333; text-decoration: none; margin-left: 15px; font-weight: bold; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        .form-card { background: white; border-radius: 15px; padding: 20px; margin-bottom: 20px; }
+        .form-card h3 { margin-bottom: 15px; color: #333; border-left: 4px solid #FFD700; padding-left: 12px; }
+        .form-row { display: flex; gap: 15px; margin-bottom: 10px; flex-wrap: wrap; }
+        .form-row input, .form-row select { flex: 1; min-width: 200px; }
+        input, select { padding: 12px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 14px; }
+        input:focus, select:focus { outline: none; border-color: #FFD700; }
+        button { background: #FFD700; padding: 12px 20px; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; font-size: 16px; }
+        .search-box { margin-bottom: 20px; }
+        .search-box input { width: 100%; }
+        .product-list { background: white; border-radius: 15px; padding: 20px; }
+        .product-list h3 { margin-bottom: 15px; }
+        .product-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #eee; gap: 15px; }
+        .product-item:hover { background: #f9f9f9; }
+        .product-image { width: 50px; height: 50px; background: #f0f0f0; border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        .product-image img { width: 100%; height: 100%; object-fit: cover; }
+        .product-image-placeholder { font-size: 24px; }
+        .product-info { flex: 1; }
+        .product-name { font-weight: bold; margin-bottom: 3px; }
+        .product-barcode { font-family: monospace; font-size: 11px; color: #999; }
+        .product-brand { font-size: 12px; color: #666; }
+        .delete-btn { background: #dc3545; color: white; padding: 6px 12px; border: none; border-radius: 8px; cursor: pointer; font-size: 12px; }
+        .stats { background: #e8f5e9; padding: 15px; border-radius: 10px; margin-bottom: 20px; text-align: center; }
+        .stats span { font-weight: bold; color: #00b894; font-size: 24px; }
+        .image-preview { margin-top: 10px; padding: 10px; background: #f8f9fa; border-radius: 8px; display: none; }
+        .image-preview img { max-width: 100px; max-height: 100px; border-radius: 8px; }
+        .bulk-import { background: #fff3cd; border: 1px solid #ffc107; }
+        .bulk-textarea { width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 10px; font-family: monospace; font-size: 12px; margin-bottom: 10px; }
+        @media (max-width: 600px) { .header { flex-direction: column; text-align: center; } .nav-links a { margin: 0 10px; } .form-row { flex-direction: column; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📦 Central Product Database</h1>
+            <div class="nav-links">
+                <a href="/admin/dashboard">Dashboard</a>
+                <a href="/admin/products">Products DB</a>
+                <a href="/admin/login">Logout</a>
+            </div>
+        </div>
+        
+        <div class="stats" id="stats">Loading...</div>
+        
+        <!-- Add Single Product -->
+        <div class="form-card">
+            <h3>➕ Add Single Product</h3>
+            <div class="form-row">
+                <input type="text" id="barcode" placeholder="Barcode (e.g., 6001234567890)">
+                <input type="text" id="productName" placeholder="Product Name">
+            </div>
+            <div class="form-row">
+                <input type="text" id="brand" placeholder="Brand">
+                <select id="category">
+                    <option value="">Select Category</option>
+                    <option value="Bread & Bakery">🍞 Bread & Bakery</option>
+                    <option value="Dairy">🥛 Dairy</option>
+                    <option value="Drinks">🥤 Drinks</option>
+                    <option value="Snacks">🍿 Snacks</option>
+                    <option value="Rice & Pasta">🍚 Rice & Pasta</option>
+                    <option value="Canned Goods">🥫 Canned Goods</option>
+                    <option value="Household">🧼 Household</option>
+                    <option value="Breakfast">🥣 Breakfast</option>
+                    <option value="Cooking">🍳 Cooking</option>
+                    <option value="Frozen">❄️ Frozen</option>
+                    <option value="Personal Care">🧴 Personal Care</option>
+                    <option value="Other">📦 Other</option>
+                </select>
+            </div>
+            <div class="form-row">
+                <input type="url" id="imageUrl" placeholder="Image URL (e.g., https://example.com/product.jpg)">
+            </div>
+            <div id="imagePreview" class="image-preview">
+                <img id="previewImg" src="" alt="Preview">
+            </div>
+            <button onclick="addProduct()">➕ Add to Database</button>
+        </div>
+        
+        <!-- Bulk Import -->
+        <div class="form-card bulk-import">
+            <h3>📦 Bulk Import Products</h3>
+            <p style="font-size: 12px; margin-bottom: 10px;">Format: barcode,product_name,brand,category,image_url (one per line)</p>
+            <textarea id="bulkData" class="bulk-textarea" rows="5" placeholder="6001234567890,Albany Bread,Albany,Bread & Bakery,https://example.com/bread.jpg
+6009876543210,Fresh Milk,Clover,Dairy,https://example.com/milk.jpg
+6001112223334,Coca-Cola,Coca-Cola,Drinks,https://example.com/coke.jpg"></textarea>
+            <button onclick="bulkImport()">📥 Import All</button>
+        </div>
+        
+        <!-- Search -->
+        <div class="search-box">
+            <input type="text" id="search" placeholder="🔍 Search by name, barcode, or brand..." onkeyup="searchProducts()">
+        </div>
+        
+        <!-- Product List -->
+        <div class="product-list">
+            <h3>📋 Products in Database</h3>
+            <div id="productsList">Loading...</div>
+        </div>
+    </div>
+    
+    <script>
+        // Image preview
+        document.getElementById('imageUrl').addEventListener('input', function() {
+            const url = this.value;
+            const previewDiv = document.getElementById('imagePreview');
+            const previewImg = document.getElementById('previewImg');
+            if (url) {
+                previewImg.src = url;
+                previewDiv.style.display = 'block';
+            } else {
+                previewDiv.style.display = 'none';
+            }
+        });
+        
+        async function addProduct() {
+            const product = {
+                barcode: document.getElementById('barcode').value.trim(),
+                product_name: document.getElementById('productName').value.trim(),
+                brand: document.getElementById('brand').value.trim(),
+                category: document.getElementById('category').value,
+                default_image: document.getElementById('imageUrl').value.trim()
+            };
+            
+            if (!product.barcode || !product.product_name) {
+                alert('Barcode and Product Name are required');
+                return;
+            }
+            
+            try {
+                const res = await fetch('/api/admin/central-products', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(product)
+                });
+                
+                if (res.ok) {
+                    alert('✓ Product added successfully!');
+                    clearForm();
+                    loadProducts();
+                    loadStats();
+                } else {
+                    const error = await res.json();
+                    alert(error.error || 'Error adding product');
+                }
+            } catch (err) {
+                alert('Error adding product');
+            }
+        }
+        
+        async function bulkImport() {
+            const data = document.getElementById('bulkData').value;
+            const lines = data.trim().split('\n');
+            let successCount = 0;
+            let failCount = 0;
+            
+            for (const line of lines) {
+                const parts = line.split(',').map(p => p.trim());
+                if (parts.length >= 2) {
+                    const product = {
+                        barcode: parts[0],
+                        product_name: parts[1],
+                        brand: parts[2] || '',
+                        category: parts[3] || '',
+                        default_image: parts[4] || ''
+                    };
+                    
+                    try {
+                        const res = await fetch('/api/admin/central-products', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(product)
+                        });
+                        if (res.ok) successCount++;
+                        else failCount++;
+                    } catch(e) { failCount++; }
+                }
+            }
+            
+            alert(`Bulk import completed!\n✅ Success: ${successCount}\n❌ Failed: ${failCount}`);
+            loadProducts();
+            loadStats();
+            document.getElementById('bulkData').value = '';
+        }
+        
+        function clearForm() {
+            document.getElementById('barcode').value = '';
+            document.getElementById('productName').value = '';
+            document.getElementById('brand').value = '';
+            document.getElementById('category').value = '';
+            document.getElementById('imageUrl').value = '';
+            document.getElementById('imagePreview').style.display = 'none';
+        }
+        
+        async function loadProducts() {
+            try {
+                const res = await fetch('/api/admin/central-products');
+                const products = await res.json();
+                displayProducts(products);
+            } catch (err) {
+                document.getElementById('productsList').innerHTML = '<p>Error loading products</p>';
+            }
+        }
+        
+        function displayProducts(products) {
+            const container = document.getElementById('productsList');
+            if (products.length === 0) {
+                container.innerHTML = '<p style="text-align:center;color:#999;">No products yet. Add some!</p>';
+                return;
+            }
+            container.innerHTML = products.map(p => `
+                <div class="product-item">
+                    <div class="product-image">
+                        ${p.default_image ? `<img src="${p.default_image}" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22%23999%22><path d=%22M4 4h16v16H4V4z%22/></svg>'">` : '<div class="product-image-placeholder">📦</div>'}
+                    </div>
+                    <div class="product-info">
+                        <div class="product-name">${escapeHtml(p.product_name)}</div>
+                        <div class="product-barcode">📷 ${p.barcode}</div>
+                        ${p.brand ? `<div class="product-brand">🏷️ ${escapeHtml(p.brand)}</div>` : ''}
+                        ${p.category ? `<div class="product-brand">📂 ${escapeHtml(p.category)}</div>` : ''}
+                    </div>
+                    <button class="delete-btn" onclick="deleteProduct(${p.id})">Delete</button>
+                </div>
+            `).join('');
+        }
+        
+        async function searchProducts() {
+            const search = document.getElementById('search').value;
+            const res = await fetch(`/api/admin/central-products?search=${encodeURIComponent(search)}`);
+            const products = await res.json();
+            displayProducts(products);
+        }
+        
+        async function deleteProduct(id) {
+            if (confirm('Delete this product from the database?')) {
+                await fetch(`/api/admin/central-products/${id}`, { method: 'DELETE' });
+                loadProducts();
+                loadStats();
+            }
+        }
+        
+        async function loadStats() {
+            try {
+                const res = await fetch('/api/admin/central-products');
+                const products = await res.json();
+                const categories = [...new Set(products.map(p => p.category).filter(c => c))];
+                document.getElementById('stats').innerHTML = `<span>${products.length}</span> products in database | <span>${categories.length}</span> categories`;
+            } catch (err) {
+                document.getElementById('stats').innerHTML = 'Loading stats...';
+            }
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        loadProducts();
+        loadStats();
+    </script>
+</body>
+</html>
