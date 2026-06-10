@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title><%= title %></title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        
+        .header {
+            background: #FFD700;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 24px;
+            color: #333;
+        }
+        
+        .scan-mode-selector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .mode-btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            background: #e0e0e0;
+            color: #666;
+        }
+        
+        .mode-btn.active {
+            background: #FFD700;
+            color: #333;
+        }
+        
+        .scanner-container {
+            background: #000;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-bottom: 20px;
+            position: relative;
+            min-height: 400px;
+        }
+        
+        #video {
+            width: 100%;
+            height: 400px;
+            display: block;
+            background: #000;
+            object-fit: cover;
+        }
+        
+        .scan-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+        }
+        
+        .scan-frame {
+            width: 280px;
+            height: 280px;
+            border: 2px solid #FFD700;
+            box-shadow: 0 0 0 9999px rgba(0,0,0,0.5);
+            border-radius: 20px;
+        }
+        
+        .camera-status {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.8);
+            color: #00ff00;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            z-index: 10;
+        }
+        
+        .manual-input {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .manual-input h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+        
+        .input-group {
+            display: flex;
+            gap: 10px;
+        }
+        
+        input {
+            flex: 1;
+            padding: 14px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            font-size: 16px;
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: #FFD700;
+        }
+        
+        .btn-primary {
+            padding: 14px 20px;
+            background: #FFD700;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .camera-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .camera-controls button {
+            flex: 1;
+            padding: 12px;
+            background: #333;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .cart-preview {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .cart-preview h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+        
+        .cart-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .cart-item-info {
+            flex: 1;
+        }
+        
+        .cart-item-name {
+            font-weight: 500;
+        }
+        
+        .cart-item-price {
+            font-size: 12px;
+            color: #FFD700;
+        }
+        
+        .cart-item-quantity {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .qty-btn {
+            width: 30px;
+            height: 30px;
+            border-radius: 8px;
+            border: none;
+            background: #f0f0f0;
+            font-size: 18px;
+            cursor: pointer;
+        }
+        
+        .cart-total {
+            text-align: right;
+            font-weight: bold;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 2px solid #FFD700;
+        }
+        
+        .checkout-btn {
+            width: 100%;
+            padding: 16px;
+            background: #00b894;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        
+        .back-btn {
+            width: 100%;
+            padding: 12px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        
+        .shop-info {
+            background: #e8f5e9;
+            padding: 15px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        
+        .shop-info.active {
+            display: block;
+        }
+        
+        .scan-result {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            background: #333;
+            color: white;
+            padding: 12px;
+            border-radius: 10px;
+            text-align: center;
+            animation: slideUp 0.3s ease;
+            display: none;
+            z-index: 1000;
+        }
+        
+        .scan-result.success {
+            background: #00b894;
+        }
+        
+        .scan-result.error {
+            background: #dc3545;
+        }
+        
+        .scan-result.warning {
+            background: #f39c12;
+        }
+        
+        @keyframes slideUp {
+            from {
+                transform: translateY(100px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        
+        .empty-cart {
+            text-align: center;
+            padding: 30px;
+            color: #999;
+        }
+        
+        .success-sound {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <audio id="successSound" preload="auto">
+        <source src="data:audio/wav;base64,U3RlYWx0aCBzb3VuZA==" type="audio/wav">
+    </audio>
+    
+    <div class="header">
+        <h1>Scan & Shop</h1>
+    </div>
+    
+    <div class="scan-mode-selector">
+        <button class="mode-btn active" onclick="setMode('barcode')">Barcode Scan</button>
+        <button class="mode-btn" onclick="setMode('qr')">QR Code Scan</button>
+    </div>
+    
+    <div class="scanner-container">
+        <video id="video" autoplay playsinline muted></video>
+        <div class="scan-overlay">
+            <div class="scan-frame"></div>
+        </div>
+        <div class="camera-status" id="cameraStatus">Starting camera...</div>
+    </div>
+    
+    <div class="camera-controls">
+        <button onclick="switchCamera()">Switch Camera</button>
+        <button onclick="stopCamera()">Stop</button>
+        <button onclick="startCamera()">Start</button>
+    </div>
+    
+    <div class="manual-input">
+        <h3>Or enter manually:</h3>
+        <div class="input-group">
+            <input type="text" id="manualInput" placeholder="Enter barcode or QR data">
+            <button class="btn-primary" onclick="processManualInput()">Add</button>
+        </div>
+    </div>
+    
+    <div id="shopInfo" class="shop-info">
+        <h3>Shop: <span id="shopName"></span></h3>
+        <p>Shopping at this store</p>
+    </div>
+    
+    <div class="cart-preview">
+        <h3>Shopping Cart</h3>
+        <div id="cartItems">
+            <div class="empty-cart">Cart is empty. Scan products to add!</div>
+        </div>
+        <div id="cartTotal"></div>
+        <button id="checkoutBtn" class="checkout-btn" onclick="checkout()" style="display:none">Checkout</button>
+    </div>
+    
+    <button class="back-btn" onclick="window.location.href='/customer-dashboard'">Back to Dashboard</button>
+    
+    <div id="scanResult" class="scan-result"></div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+    <script>
+        let cart = [];
+        let currentMerchantId = null;
+        let currentMode = 'barcode';
+        let stream = null;
+        let currentCamera = 'environment';
+        let scanning = true;
+        let animationId = null;
+        
+        const video = document.getElementById('video');
+        const statusDiv = document.getElementById('cameraStatus');
+        let lastScanTime = 0;
+        let lastScanData = '';
+        
+        function playBeep() {
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.value = 880;
+                gainNode.gain.value = 0.3;
+                
+                oscillator.start();
+                gainNode.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + 0.3);
+                oscillator.stop(audioContext.currentTime + 0.3);
+                
+                audioContext.resume();
+            } catch(e) {
+                console.log('Beep error:', e);
+            }
+        }
+        
+        function showSuccessMessage(message, type = 'success') {
+            const resultDiv = document.getElementById('scanResult');
+            resultDiv.textContent = message;
+            resultDiv.className = 'scan-result ' + type;
+            resultDiv.style.display = 'block';
+            
+            playBeep();
+            
+            setTimeout(() => {
+                resultDiv.style.display = 'none';
+                resultDiv.className = 'scan-result';
+            }, 3000);
+        }
+        
+        async function startCamera() {
+            statusDiv.textContent = 'Requesting camera...';
+            statusDiv.style.color = '#FFD700';
+            
+            try {
+                if (stream) {
+                    stream.getTracks().forEach(track => track.stop());
+                }
+                
+                if (animationId) {
+                    cancelAnimationFrame(animationId);
+                }
+                
+                const constraints = {
+                    video: { facingMode: currentCamera }
+                };
+                
+                stream = await navigator.mediaDevices.getUserMedia(constraints);
+                video.srcObject = stream;
+                
+                video.onloadedmetadata = () => {
+                    video.play();
+                    statusDiv.textContent = 'Camera ready - scanning...';
+                    statusDiv.style.color = '#00ff00';
+                    showSuccessMessage('Camera started - scanning automatically', 'success');
+                    startScanning();
+                };
+                
+            } catch (err) {
+                console.error('Camera error:', err);
+                statusDiv.textContent = 'Camera error: ' + err.message;
+                statusDiv.style.color = '#ff4444';
+                showSuccessMessage('Camera error: ' + err.message, 'error');
+            }
+        }
+        
+        function stopCamera() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                video.srcObject = null;
+                if (animationId) {
+                    cancelAnimationFrame(animationId);
+                    animationId = null;
+                }
+                statusDiv.textContent = 'Camera stopped';
+                statusDiv.style.color = '#ff4444';
+                showSuccessMessage('Camera stopped', 'warning');
+            }
+        }
+        
+        function startScanning() {
+            function scanFrame() {
+                if (!scanning || video.readyState !== 4 || !video.videoWidth || !video.videoHeight) {
+                    animationId = requestAnimationFrame(scanFrame);
+                    return;
+                }
+                
+                const canvas = document.createElement('canvas');
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                
+                const code = jsQR(imageData.data, imageData.width, imageData.height, {
+                    inversionAttempts: "dontInvert",
+                });
+                
+                if (code && code.data) {
+                    const now = Date.now();
+                    if (now - lastScanTime > 1500 && code.data !== lastScanData) {
+                        lastScanTime = now;
+                        lastScanData = code.data;
+                        handleScan(code.data);
+                    }
+                }
+                
+                if (currentMode === 'barcode' && 'BarcodeDetector' in window) {
+                    const detector = new BarcodeDetector();
+                    detector.detect(canvas).then(barcodes => {
+                        if (barcodes.length > 0) {
+                            const now = Date.now();
+                            if (now - lastScanTime > 1500 && barcodes[0].rawValue !== lastScanData) {
+                                lastScanTime = now;
+                                lastScanData = barcodes[0].rawValue;
+                                handleScan(barcodes[0].rawValue);
+                            }
+                        }
+                    }).catch(err => console.log('Barcode error:', err));
+                }
+                
+                animationId = requestAnimationFrame(scanFrame);
+            }
+            
+            scanFrame();
+        }
+        
+        function handleScan(data) {
+            console.log('Scanned:', data);
+            if (currentMode === 'qr') {
+                processQRCode(data);
+            } else {
+                processBarcode(data);
+            }
+        }
+        
+        async function processQRCode(data) {
+            try {
+                const jsonData = JSON.parse(data);
+                if (jsonData.type === 'shop') {
+                    currentMerchantId = jsonData.merchantId;
+                    const shopName = jsonData.shopName;
+                    document.getElementById('shopName').innerText = shopName;
+                    document.getElementById('shopInfo').classList.add('active');
+                    showSuccessMessage(`✓ Shop detected! Now shopping at: ${shopName}`, 'success');
+                    await loadShopProducts(jsonData.merchantId);
+                    return;
+                }
+            } catch (e) {
+                // Not JSON, treat as barcode
+            }
+            await findProductByBarcode(data);
+        }
+        
+        async function processBarcode(barcode) {
+            await findProductByBarcode(barcode);
+        }
+        
+        async function processManualInput() {
+            const input = document.getElementById('manualInput').value;
+            if (input) {
+                if (currentMode === 'qr') {
+                    await processQRCode(input);
+                } else {
+                    await processBarcode(input);
+                }
+                document.getElementById('manualInput').value = '';
+            }
+        }
+        
+        async function loadShopProducts(merchantId) {
+            try {
+                const response = await fetch(`/api/shop/${merchantId}/products`);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.products.length > 0) {
+                        showSuccessMessage(`✓ ${data.products.length} products available at this shop! Start scanning barcodes.`, 'success');
+                    } else {
+                        showSuccessMessage(`⚠ No products found at this shop. Ask merchant to add products.`, 'warning');
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading products:', error);
+            }
+        }
+        
+        async function findProductByBarcode(barcode) {
+            if (!currentMerchantId) {
+                showSuccessMessage("⚠ Please scan a shop QR code first!", 'warning');
+                setMode('qr');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/product/barcode/${barcode}`);
+                if (response.ok) {
+                    const product = await response.json();
+                    addToCart(product);
+                    showSuccessMessage(`✓ Added to cart: ${product.name} - R${product.price}`, 'success');
+                } else {
+                    showSuccessMessage(`✗ Product not found for barcode: ${barcode}`, 'error');
+                }
+            } catch (error) {
+                showSuccessMessage(`✗ Error finding product`, 'error');
+            }
+        }
+        
+        function addToCart(product) {
+            const existing = cart.find(item => item.id === product.id);
+            if (existing) {
+                existing.quantity++;
+                showSuccessMessage(`✓ Updated quantity: ${product.name} x ${existing.quantity}`, 'success');
+            } else {
+                cart.push({
+                    id: product.id,
+                    name: product.name,
+                    price: product.price,
+                    barcode: product.barcode,
+                    picture: product.picture,
+                    quantity: 1
+                });
+            }
+            updateCartDisplay();
+        }
+        
+        function updateQuantity(index, change) {
+            const newQuantity = cart[index].quantity + change;
+            if (newQuantity <= 0) {
+                const removedItem = cart[index];
+                cart.splice(index, 1);
+                showSuccessMessage(`✓ Removed: ${removedItem.name} from cart`, 'warning');
+            } else {
+                cart[index].quantity = newQuantity;
+                showSuccessMessage(`✓ Updated: ${cart[index].name} x ${newQuantity}`, 'success');
+            }
+            updateCartDisplay();
+        }
+        
+        function updateCartDisplay() {
+            const cartItemsDiv = document.getElementById('cartItems');
+            const cartTotalDiv = document.getElementById('cartTotal');
+            const checkoutBtn = document.getElementById('checkoutBtn');
+            
+            if (cart.length === 0) {
+                cartItemsDiv.innerHTML = '<div class="empty-cart">🛒 Cart is empty. Scan products to add!</div>';
+                cartTotalDiv.innerHTML = '';
+                checkoutBtn.style.display = 'none';
+                return;
+            }
+            
+            cartItemsDiv.innerHTML = cart.map((item, index) => `
+                <div class="cart-item">
+                    <div class="cart-item-info">
+                        <div class="cart-item-name">${escapeHtml(item.name)}</div>
+                        <div class="cart-item-price">R${item.price} each</div>
+                    </div>
+                    <div class="cart-item-quantity">
+                        <button class="qty-btn" onclick="updateQuantity(${index}, -1)">-</button>
+                        <span style="min-width: 30px; text-align: center;">${item.quantity}</span>
+                        <button class="qty-btn" onclick="updateQuantity(${index}, 1)">+</button>
+                    </div>
+                </div>
+            `).join('');
+            
+            const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            cartTotalDiv.innerHTML = `<div class="cart-total">Total: R${total.toFixed(2)}</div>`;
+            checkoutBtn.style.display = 'block';
+            saveCart();
+        }
+        
+        async function checkout() {
+            if (!currentMerchantId) {
+                showSuccessMessage("⚠ Please scan a shop QR code first!", 'warning');
+                setMode('qr');
+                return;
+            }
+            
+            if (cart.length === 0) {
+                showSuccessMessage("⚠ Cart is empty! Add items first.", 'warning');
+                return;
+            }
+            
+            const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            
+            const checkoutBtn = document.getElementById('checkoutBtn');
+            checkoutBtn.textContent = 'Processing...';
+            checkoutBtn.disabled = true;
+            
+            try {
+                const response = await fetch('/api/orders', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        merchantId: currentMerchantId,
+                        items: cart,
+                        total: total
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    showSuccessMessage(`✓ Order placed successfully! Total: R${total.toFixed(2)}`, 'success');
+                    
+                    const orderWindow = window.open();
+                    orderWindow.document.write(`
+                        <html>
+                        <head>
+                            <title>Order QR Code</title>
+                            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                            <style>
+                                body { display: flex; justify-content: center; align-items: center; min-height: 100vh; font-family: sans-serif; background: #f5f5f5; margin: 0; padding: 20px; }
+                                .container { text-align: center; background: white; padding: 30px; border-radius: 20px; }
+                                img { max-width: 100%; width: 300px; height: auto; }
+                                h2 { color: #FFD700; margin-bottom: 20px; }
+                                p { color: #666; margin-top: 20px; }
+                                button { margin-top: 20px; padding: 12px 24px; background: #FFD700; border: none; border-radius: 10px; cursor: pointer; }
+                            </style>
+                        </head>
+                        <body>
+                            <div class="container">
+                                <h2>✓ Order Placed!</h2>
+                                <img src="${data.orderQr}" alt="Order QR Code">
+                                <p>Show this QR code to the merchant to collect your order</p>
+                                <button onclick="window.close()">Close</button>
+                            </div>
+                        </body>
+                        </html>
+                    `);
+                    
+                    cart = [];
+                    updateCartDisplay();
+                    saveCart();
+                } else {
+                    showSuccessMessage(`✗ Error placing order. Please try again.`, 'error');
+                }
+            } catch (error) {
+                showSuccessMessage(`✗ Error placing order. Check your connection.`, 'error');
+            } finally {
+                checkoutBtn.textContent = 'Checkout';
+                checkoutBtn.disabled = false;
+            }
+        }
+        
+        function setMode(mode) {
+            currentMode = mode;
+            document.querySelectorAll('.mode-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            if (mode === 'barcode') {
+                document.querySelector('.mode-btn:first-child').classList.add('active');
+                showSuccessMessage("📷 Barcode mode - Scan product barcodes", 'success');
+            } else {
+                document.querySelector('.mode-btn:last-child').classList.add('active');
+                showSuccessMessage("🏪 QR mode - Scan shop QR code to start shopping", 'success');
+            }
+        }
+        
+        async function switchCamera() {
+            currentCamera = currentCamera === 'environment' ? 'user' : 'environment';
+            await startCamera();
+            showSuccessMessage(`📷 Switched to ${currentCamera === 'environment' ? 'back' : 'front'} camera`, 'success');
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        function saveCart() {
+            localStorage.setItem('spaza_cart', JSON.stringify(cart));
+            if (currentMerchantId) {
+                localStorage.setItem('spaza_merchant', JSON.stringify({
+                    id: currentMerchantId,
+                    name: document.getElementById('shopName').innerText
+                }));
+            }
+        }
+        
+        function loadCart() {
+            const savedCart = localStorage.getItem('spaza_cart');
+            const savedMerchant = localStorage.getItem('spaza_merchant');
+            if (savedCart) {
+                try {
+                    cart = JSON.parse(savedCart);
+                    updateCartDisplay();
+                } catch(e) {}
+            }
+            if (savedMerchant) {
+                try {
+                    const merchant = JSON.parse(savedMerchant);
+                    currentMerchantId = merchant.id;
+                    document.getElementById('shopName').innerText = merchant.name;
+                    document.getElementById('shopInfo').classList.add('active');
+                } catch(e) {}
+            }
+        }
+        
+        window.addEventListener('load', () => {
+            loadCart();
+            startCamera();
+        });
+    </script>
+</body>
+</html>

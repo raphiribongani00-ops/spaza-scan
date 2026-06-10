@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Camera Test</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 20px;
+            background: #333;
+            color: white;
+        }
+        video {
+            width: 100%;
+            max-width: 500px;
+            border: 2px solid yellow;
+            background: black;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 10px;
+            font-size: 16px;
+        }
+        .status {
+            margin: 10px 0;
+            padding: 10px;
+            background: #444;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Camera Test</h1>
+    <div class="status" id="status">Testing camera...</div>
+    <video id="video" autoplay playsinline></video>
+    <br>
+    <button onclick="startCamera()">Start Camera</button>
+    <button onclick="stopCamera()">Stop Camera</button>
+
+    <script>
+        let stream = null;
+        const video = document.getElementById('video');
+        const statusDiv = document.getElementById('status');
+
+        async function startCamera() {
+            statusDiv.innerHTML = 'Requesting camera permission...';
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: 'environment' } 
+                });
+                video.srcObject = stream;
+                statusDiv.innerHTML = '✅ Camera working! You should see video feed above.';
+                statusDiv.style.background = '#2ecc71';
+            } catch (err) {
+                console.error('Camera error:', err);
+                statusDiv.innerHTML = '❌ Camera error: ' + err.message;
+                statusDiv.style.background = '#e74c3c';
+            }
+        }
+
+        function stopCamera() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                video.srcObject = null;
+                statusDiv.innerHTML = 'Camera stopped';
+                statusDiv.style.background = '#444';
+            }
+        }
+
+        // Auto-start
+        startCamera();
+    </script>
+</body>
+</html>

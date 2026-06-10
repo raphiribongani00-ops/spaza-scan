@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Scan Barcode - Spaza Scan</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            text-align: center;
+            padding: 20px;
+            margin: 0;
+            background-color: black;
+            color: white;
+        }
+        h1 {
+            font-size: 1.5em;
+            margin-top: 0;
+            color: #FFD700;
+        }
+        #reader {
+            width: 100%;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            margin: 10px;
+            background-color: #FFD700;
+            color: black;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        button:hover {
+            background-color: #e6c200;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #333;
+            border-radius: 5px;
+            color: white;
+        }
+        a {
+            color: #FFD700;
+            text-decoration: none;
+        }
+        .close-btn {
+            background-color: #dc3545;
+            color: white;
+        }
+        .close-btn:hover {
+            background-color: #c82333;
+        }
+    </style>
+</head>
+<body>
+    <h1>Scan Product Barcode</h1>
+    <p>Position the barcode in front of the camera</p>
+    <div id="reader"></div>
+    <button id="stopBtn" class="close-btn">Stop Camera</button>
+    <div id="result" class="result"></div>
+    <p><a href="#" onclick="window.close()">Close and return to dashboard</a></p>
+
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <script>
+        let html5QrCode;
+        let isScanning = false;
+        
+        function startScanner() {
+            if (isScanning) return;
+            
+            html5QrCode = new Html5Qrcode("reader");
+            const config = {
+                fps: 10,
+                qrbox: { width: 250, height: 250 },
+                aspectRatio: 1.0
+            };
+            
+            html5QrCode.start(
+                { facingMode: "environment" },
+                config,
+                (decodedText) => {
+                    document.getElementById('result').innerHTML = `
+                        <strong>Barcode detected:</strong> ${decodedText}<br><br>
+                        <button onclick="sendBarcode('${decodedText}')">Add to Cart</button>
+                        <button onclick="startScanner()">Scan Another</button>
+                    `;
+                    stopScanner();
+                },
+                (errorMessage) => {
+                    console.log(errorMessage);
+                }
+            ).then(() => {
+                isScanning = true;
+                document.getElementById('result').innerHTML = 'Camera started. Point at a barcode.';
+            }).catch(err => {
+                document.getElementById('result').innerHTML = 'Error starting camera: ' + err + '<br><br>Make sure you granted camera permission.';
+            });
+        }
+        
+        function stopScanner() {
+            if (html5QrCode && isScanning) {
+                html5QrCode.stop().then(() => {
+                    isScanning = false;
+                }).catch(err => {
+                    console.log('Stop error:', err);
+                });
+            }
+        }
+        
+        function sendBarcode(barcode) {
+            if (window.opener) {
+                window.opener.postMessage({ type: 'BARCODE_SCAN', barcode: barcode }, '*');
+                alert('Barcode ' + barcode + ' sent to dashboard!');
+                window.close();
+            } else {
+                alert('Barcode: ' + barcode + '\n(No parent window found - open this from the dashboard)');
+            }
+        }
+        
+        startScanner();
+        
+        window.addEventListener('beforeunload', () => {
+            stopScanner();
+        });
+        
+        document.getElementById('stopBtn').onclick = () => {
+            stopScanner();
+        };
+    </script>
+</body>
+</html>

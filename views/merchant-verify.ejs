@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title><%= title %></title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        
+        .header {
+            background: #333;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+            color: white;
+        }
+        
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+        
+        .welcome-text {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        
+        .scanner-container {
+            background: #000;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-bottom: 20px;
+            position: relative;
+            min-height: 350px;
+        }
+        
+        video {
+            width: 100%;
+            height: auto;
+            min-height: 350px;
+            object-fit: cover;
+        }
+        
+        .scan-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+        }
+        
+        .scan-frame {
+            width: 280px;
+            height: 280px;
+            border: 2px solid #FFD700;
+            box-shadow: 0 0 0 9999px rgba(0,0,0,0.5);
+            border-radius: 20px;
+        }
+        
+        .camera-status {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 12px;
+        }
+        
+        .manual-input {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .input-group {
+            display: flex;
+            gap: 10px;
+        }
+        
+        input {
+            flex: 1;
+            padding: 14px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            font-size: 16px;
+        }
+        
+        button {
+            padding: 14px 20px;
+            background: #FFD700;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .camera-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .camera-controls button {
+            flex: 1;
+            padding: 12px;
+            background: #333;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+        
+        .orders-list {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .order-card {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-left: 4px solid #FFD700;
+        }
+        
+        .order-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        
+        .order-id {
+            font-weight: bold;
+        }
+        
+        .order-status {
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 12px;
+            background: #ffeaa7;
+            color: #d63031;
+        }
+        
+        .order-items {
+            margin: 10px 0;
+            padding: 10px;
+            background: white;
+            border-radius: 8px;
+        }
+        
+        .order-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+        }
+        
+        .order-total {
+            text-align: right;
+            font-weight: bold;
+            margin-top: 10px;
+            color: #FFD700;
+        }
+        
+        .verify-btn {
+            width: 100%;
+            padding: 10px;
+            background: #00b894;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        
+        .back-btn {
+            width: 100%;
+            padding: 12px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+        
+        .scan-result {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            background: #333;
+            color: white;
+            padding: 12px;
+            border-radius: 10px;
+            text-align: center;
+            display: none;
+            z-index: 1000;
+        }
+        
+        @media (max-width: 768px) {
+            .input-group {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Verify Orders</h1>
+        <p class="welcome-text">Welcome, <%= shop_name %></p>
+    </div>
+    
+    <div class="scanner-container" id="scannerContainer">
+        <video id="video" autoplay playsinline muted></video>
+        <div class="scan-overlay">
+            <div class="scan-frame"></div>
+        </div>
+        <div class="camera-status" id="cameraStatus">Initializing camera...</div>
+    </div>
+    
+    <div class="camera-controls">
+        <button onclick="switchCamera()">Switch Camera</button>
+        <button onclick="stopScanner()">Stop</button>
+        <button onclick="startScanner()">Start</button>
+    </div>
+    
+    <div class="manual-input">
+        <h3>Or enter order QR code manually:</h3>
+        <div class="input-group">
+            <input type="text" id="manualInput" placeholder="Paste order QR data or order ID">
+            <button onclick="verifyManual()">Verify Order</button>
+        </div>
+    </div>
+    
+    <div class="orders-list">
+        <h3>Pending Orders</h3>
+        <div id="ordersContainer">
+            <div class="loading">Loading orders...</div>
+        </div>
+    </div>
+    
+    <button class="back-btn" onclick="window.location.href='/merchant-dashboard'">Back to Dashboard</button>
+    
+    <div id="scanResult" class="scan-result"></div>
+    
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <script>
+        let html5QrCode = null;
+        let currentCamera = 'environment';
+        
+        async function startScanner() {
+            const statusDiv = document.getElementById('cameraStatus');
+            statusDiv.textContent = 'Starting camera...';
+            
+            try {
+                if (html5QrCode) {
+                    try {
+                        await html5QrCode.stop();
+                        await html5QrCode.clear();
+                    } catch(e) {}
+                }
+                
+                const cameras = await Html5Qrcode.getCameras();
+                console.log('Available cameras:', cameras);
+                
+                if (!cameras || cameras.length === 0) {
+                    statusDiv.textContent = 'No camera found';
+                    showMessage('No camera found on this device');
+                    return;
+                }
+                
+                let selectedCameraId = cameras[0].id;
+                if (currentCamera === 'environment') {
+                    const backCamera = cameras.find(cam => 
+                        cam.label.toLowerCase().includes('back') || 
+                        cam.label.toLowerCase().includes('environment') ||
+                        cam.label.toLowerCase().includes('rear')
+                    );
+                    if (backCamera) selectedCameraId = backCamera.id;
+                } else {
+                    const frontCamera = cameras.find(cam => 
+                        cam.label.toLowerCase().includes('front') || 
+                        cam.label.toLowerCase().includes('user') ||
+                        cam.label.toLowerCase().includes('face')
+                    );
+                    if (frontCamera) selectedCameraId = frontCamera.id;
+                }
+                
+                statusDiv.textContent = `Initializing...`;
+                
+                html5QrCode = new Html5Qrcode("video");
+                
+                const config = {
+                    fps: 10,
+                    qrbox: { width: 250, height: 250 }
+                };
+                
+                await html5QrCode.start(
+                    { deviceId: { exact: selectedCameraId } },
+                    config,
+                    (decodedText, decodedResult) => {
+                        console.log('Scanned order QR:', decodedText);
+                        processOrderQR(decodedText);
+                        if (navigator.vibrate) navigator.vibrate(200);
+                    },
+                    (errorMessage) => {
+                        console.log('Scan error:', errorMessage);
+                    }
+                );
+                
+                statusDiv.textContent = 'Camera ready - scan customer QR code';
+                showMessage('Scanner ready');
+                
+            } catch (err) {
+                console.error('Error starting scanner:', err);
+                statusDiv.textContent = 'Camera error: ' + err.message;
+                showMessage('Camera error: ' + err.message);
+            }
+        }
+        
+        async function processOrderQR(data) {
+            try {
+                const jsonData = JSON.parse(data);
+                if (jsonData.type === 'order') {
+                    await verifyOrderByCustomer(jsonData.customerId, jsonData.merchantId);
+                } else {
+                    await verifyOrderById(data);
+                }
+            } catch (e) {
+                await verifyOrderById(data);
+            }
+        }
+        
+        async function verifyManual() {
+            const input = document.getElementById('manualInput').value;
+            if (input) {
+                await processOrderQR(input);
+                document.getElementById('manualInput').value = '';
+            }
+        }
+        
+        async function verifyOrderById(orderId) {
+            try {
+                const response = await fetch(`/api/merchant/orders/${orderId}/release`, {
+                    method: 'PUT'
+                });
+                
+                if (response.ok) {
+                    showMessage("Order verified and released!");
+                    loadOrders();
+                } else {
+                    showMessage("Order not found or already verified");
+                }
+            } catch (error) {
+                showMessage("Error verifying order");
+            }
+        }
+        
+        async function verifyOrderByCustomer(customerId, merchantId) {
+            try {
+                const response = await fetch('/api/merchant/orders');
+                const orders = await response.json();
+                
+                const order = orders.find(o => o.customer_id == customerId && o.status === 'pending');
+                
+                if (order) {
+                    const releaseResponse = await fetch(`/api/merchant/orders/${order.id}/release`, {
+                        method: 'PUT'
+                    });
+                    
+                    if (releaseResponse.ok) {
+                        showMessage(`Order #${order.id} verified! Total: R${order.total}`);
+                        loadOrders();
+                    } else {
+                        showMessage("Error releasing order");
+                    }
+                } else {
+                    showMessage("No pending order found for this customer");
+                }
+            } catch (error) {
+                showMessage("Error finding order");
+            }
+        }
+        
+        async function loadOrders() {
+            try {
+                const response = await fetch('/api/merchant/orders');
+                const orders = await response.json();
+                
+                const container = document.getElementById('ordersContainer');
+                const pendingOrders = orders.filter(o => o.status === 'pending');
+                
+                if (pendingOrders.length === 0) {
+                    container.innerHTML = '<div class="loading">No pending orders</div>';
+                    return;
+                }
+                
+                container.innerHTML = pendingOrders.map(order => `
+                    <div class="order-card">
+                        <div class="order-header">
+                            <span class="order-id">Order #${order.id}</span>
+                            <span class="order-status">${order.status}</span>
+                        </div>
+                        <div class="order-items">
+                            ${order.items.map(item => `
+                                <div class="order-item">
+                                    <span>${escapeHtml(item.name)} x ${item.quantity}</span>
+                                    <span>R${(item.price * item.quantity).toFixed(2)}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <div class="order-total">Total: R${order.total.toFixed(2)}</div>
+                        <button class="verify-btn" onclick="verifyOrderById(${order.id})">Release Order</button>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Error loading orders:', error);
+                document.getElementById('ordersContainer').innerHTML = '<div class="loading">Error loading orders</div>';
+            }
+        }
+        
+        async function switchCamera() {
+            currentCamera = currentCamera === 'environment' ? 'user' : 'environment';
+            await startScanner();
+            showMessage(`Switched to ${currentCamera === 'environment' ? 'back' : 'front'} camera`);
+        }
+        
+        function stopScanner() {
+            if (html5QrCode) {
+                html5QrCode.stop();
+                document.getElementById('cameraStatus').textContent = 'Scanner stopped';
+                showMessage("Scanner stopped");
+            }
+        }
+        
+        function showMessage(message) {
+            const resultDiv = document.getElementById('scanResult');
+            resultDiv.textContent = message;
+            resultDiv.style.display = 'block';
+            setTimeout(() => {
+                resultDiv.style.display = 'none';
+            }, 3000);
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                startScanner();
+            }, 500);
+            loadOrders();
+            setInterval(loadOrders, 10000);
+        });
+    </script>
+</body>
+</html>

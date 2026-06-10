@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Admin Dashboard - SpazaPay</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: #f5f5f5;
+            padding-bottom: 80px;
+        }
+        
+        /* Header */
+        .header {
+            background: white;
+            padding: 20px;
+            border-bottom: 2px solid #FFD700;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+        
+        .header p {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .logout-btn {
+            background: #dc3545;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 15px;
+            padding: 20px;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #FFD700;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .stat-sub {
+            font-size: 12px;
+            color: #00b894;
+            margin-top: 5px;
+            display: block;
+        }
+        
+        /* Section */
+        .section {
+            background: white;
+            margin: 20px;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        
+        .section-title {
+            font-size: 20px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .btn {
+            background: #FFD700;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th, td {
+            text-align: left;
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+        }
+        
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            display: inline-block;
+        }
+        
+        .status-pending { background: #ffeaa7; color: #d63031; }
+        .status-active { background: #c8f7c5; color: #00b894; }
+        .status-suspended { background: #ffd3d3; color: #d63031; }
+        .status-completed { background: #c8f7c5; color: #00b894; }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+        
+        .error-msg {
+            background: #fee;
+            color: #c33;
+            padding: 20px;
+            margin: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        @media (max-width: 768px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .section-title {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            table {
+                font-size: 12px;
+            }
+            
+            th, td {
+                padding: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div>
+            <h1>Admin Dashboard</h1>
+            <p>Platform Analytics & Management</p>
+        </div>
+        <button class="logout-btn" onclick="logout()">Logout</button>
+    </div>
+    
+    <div id="app">
+        <div class="loading">Loading dashboard...</div>
+    </div>
+    
+    <script>
+        async function fetchJSON(url) {
+            const response = await fetch(url);
+            if (!response.ok) {
+                if (response.status === 401) {
+                    window.location.href = '/admin/login';
+                }
+                throw new Error(`HTTP ${response.status}`);
+            }
+            return response.json();
+        }
+        
+        async function loadDashboard() {
+            try {
+                // Fetch all data in parallel
+                const [stats, topMerchants, inactiveMerchants] = await Promise.all([
+                    fetchJSON('/admin/stats'),
+                    fetchJSON('/admin/top-merchants?limit=5'),
+                    fetchJSON('/admin/inactive-merchants')
+                ]);
+                
+                const html = `
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-value">${stats.totalMerchants || 0}</div>
+                            <div class="stat-label">Total Merchants</div>
+                            <small class="stat-sub">+${stats.newMerchants || 0} this month</small>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">${stats.totalCustomers || 0}</div>
+                            <div class="stat-label">Total Customers</div>
+                            <small class="stat-sub">+${stats.newCustomers || 0} this month</small>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">${stats.totalOrders || 0}</div>
+                            <div class="stat-label">Total Orders</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">R${(stats.totalRevenue || 0).toLocaleString()}</div>
+                            <div class="stat-label">All-Time Revenue</div>
+                        </div>
+                    </div>
+                    
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-value">R${(stats.monthlyRevenue || 0).toLocaleString()}</div>
+                            <div class="stat-label">Revenue This Month</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">${stats.ordersByStatus ? stats.ordersByStatus.find(s => s.status === 'pending')?.count || 0 : 0}</div>
+                            <div class="stat-label">Pending Orders</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">${stats.ordersByStatus ? stats.ordersByStatus.find(s => s.status === 'completed')?.count || 0 : 0}</div>
+                            <div class="stat-label">Completed Orders</div>
+                        </div>
+                    </div>
+                    
+                    <div class="section">
+                        <div class="section-title">
+                            <span>Top Merchants by Revenue</span>
+                            <button class="btn" onclick="exportMerchants()">Export Merchants CSV</button>
+                        </div>
+                        ${topMerchants.length === 0 ? '<p>No merchants found</p>' : `
+                            <div style="overflow-x: auto;">
+                                <table>
+                                    <thead>
+                                        <tr><th>Shop Name</th><th>Phone</th><th>Orders</th><th>Revenue</th><th>Last Order</th></tr>
+                                    </thead>
+                                    <tbody>
+                                        ${topMerchants.map(m => `
+                                            <tr>
+                                                <td><strong>${escapeHtml(m.shop_name)}</strong></td>
+                                                <td>${m.phone}</td>
+                                                <td>${m.total_orders || 0}</td>
+                                                <td style="color:#FFD700; font-weight:bold;">R${(m.total_revenue || 0).toLocaleString()}</td>
+                                                <td>${m.last_order_date ? new Date(m.last_order_date).toLocaleDateString() : 'Never'}</td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        `}
+                    </div>
+                    
+                    <div class="section">
+                        <div class="section-title">
+                            <span>Inactive Merchants (Need Attention)</span>
+                            <button class="btn btn-secondary" onclick="location.reload()">Refresh</button>
+                        </div>
+                        ${inactiveMerchants.length === 0 ? '<p style="color:#00b894;">✓ No inactive merchants found. All merchants are active!</p>' : `
+                            <div style="overflow-x: auto;">
+                                <table>
+                                    <thead>
+                                        <tr><th>Shop Name</th><th>Phone</th><th>Products</th><th>Last Activity</th><th>Status</th></tr>
+                                    </thead>
+                                    <tbody>
+                                        ${inactiveMerchants.map(m => `
+                                            <tr>
+                                                <td>${escapeHtml(m.shop_name)}</td>
+                                                <td>${m.phone}</td>
+                                                <td>${m.product_count || 0}</td>
+                                                <td>${m.last_product_added ? new Date(m.last_product_added).toLocaleDateString() : 'Never'}</td>
+                                                <td><span class="status-badge status-pending">Inactive</span></td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        `}
+                    </div>
+                    
+                    <div class="section">
+                        <div class="section-title">
+                            <span>Quick Actions</span>
+                        </div>
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            <button class="btn" onclick="exportOrders()">Export All Orders CSV</button>
+                            <button class="btn btn-secondary" onclick="window.location.href='/admin/test'">Test Admin API</button>
+                        </div>
+                    </div>
+                `;
+                
+                document.getElementById('app').innerHTML = html;
+            } catch (error) {
+                console.error('Dashboard error:', error);
+                document.getElementById('app').innerHTML = `
+                    <div class="error-msg">
+                        <strong>Error loading dashboard</strong><br>
+                        ${error.message}<br><br>
+                        <button onclick="loadDashboard()" class="btn">Retry</button>
+                        <button onclick="logout()" class="btn btn-secondary">Logout</button>
+                    </div>
+                `;
+            }
+        }
+        
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        async function exportMerchants() {
+            window.location.href = '/admin/export-merchants';
+        }
+        
+        async function exportOrders() {
+            const startDate = prompt('Enter start date (YYYY-MM-DD) or leave empty for all time:');
+            const endDate = prompt('Enter end date (YYYY-MM-DD) or leave empty for all time:');
+            let url = '/admin/export-orders';
+            if (startDate || endDate) {
+                const params = new URLSearchParams();
+                if (startDate) params.append('start_date', startDate);
+                if (endDate) params.append('end_date', endDate);
+                url += '?' + params.toString();
+            }
+            window.location.href = url;
+        }
+        
+        async function logout() {
+            try {
+                await fetch('/admin/logout', { method: 'POST' });
+                window.location.href = '/admin/login';
+            } catch (error) {
+                window.location.href = '/admin/login';
+            }
+        }
+        
+        // Load dashboard on page load
+        loadDashboard();
+        
+        // Refresh every 60 seconds
+        setInterval(loadDashboard, 60000);
+    </script>
+</body>
+</html>

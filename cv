@@ -1,0 +1,51 @@
+I'm building a mobile website for spaza shops (South African informal grocery stores).
+
+COMPLETED SO FAR:
+
+Backend:
+- Node.js + Express server
+- SQLite database with better-sqlite3
+- Session-based authentication for customers and merchants
+- Multer for product photo uploads
+- QR code generation (shop QR and order QR) using qrcode library
+- Real barcode scanning with html5-qrcode (camera + manual fallback)
+
+Database tables:
+- customers (id, phone, email, password, saved_card)
+- merchants (id, shop_name, phone, email, password, shop_address, owner_address, owner_photo, banking_details)
+- products (id, barcode, name, price, picture, merchant_id)
+- orders (id, customer_id, merchant_id, items JSON, total, status, order_qr)
+
+Features working:
+- Customer signup/login/logout
+- Merchant signup/login/logout
+- Merchant: add/edit/delete products with photo upload
+- Merchant: view shop QR code (download/print)
+- Merchant: verify orders by scanning order QR, see items, release customer
+- Merchant: analytics dashboard (revenue, top products, daily sales, recent orders)
+- Customer: scan shop QR (manual entry for prototype)
+- Customer: scan product barcodes (camera or manual)
+- Customer: shopping cart with add/remove
+- Customer: fake payment checkout with order QR popup
+- Customer: order history with status tracking
+
+Styling:
+- Mobile-friendly CSS
+- Theme colors: #FFD700 (gold/yellow) as accent, black text, white background
+- No emojis in text
+- Product images shown in cart, order history, merchant verify, merchant products (70x70px)
+- Loading spinners on async operations
+
+TO BUILD NEXT (choose one tomorrow):
+1. Product search for customers
+2. Saved carts / favorites
+3. Bulk product upload (CSV) for merchants
+4. Inventory tracking (stock levels)
+5. Sales export to CSV for merchants
+6. Password reset / forgot password
+7. Email order confirmations
+8. Dark mode toggle
+9. Deploy to live server (Render/Railway)
+10. Share order QR via WhatsApp
+
+Current server runs on localhost:3000 with npm run dev

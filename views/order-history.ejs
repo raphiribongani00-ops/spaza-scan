@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title><%= title %></title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        
+        .header {
+            background: #FFD700;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 24px;
+            color: #333;
+        }
+        
+        .back-btn {
+            background: #333;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 10px;
+            margin-top: 10px;
+            cursor: pointer;
+        }
+        
+        .order-card {
+            background: white;
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        
+        .order-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .order-id {
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .order-status {
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .status-pending {
+            background: #ffeaa7;
+            color: #d63031;
+        }
+        
+        .status-completed {
+            background: #c8f7c5;
+            color: #00b894;
+        }
+        
+        .order-date {
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 10px;
+        }
+        
+        .order-items {
+            margin-top: 10px;
+        }
+        
+        .order-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .order-total {
+            margin-top: 10px;
+            text-align: right;
+            font-weight: bold;
+            color: #FFD700;
+        }
+        
+        .empty {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+        
+        .empty .icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Order History</h1>
+        <button class="back-btn" onclick="window.location.href='/customer-dashboard'">← Back to Dashboard</button>
+    </div>
+    
+    <div id="orders-container">
+        <div class="empty">
+            <div class="icon">📦</div>
+            <p>Loading your orders...</p>
+        </div>
+    </div>
+    
+    <script>
+        async function loadOrders() {
+            try {
+                const response = await fetch('/api/customer/orders');
+                const orders = await response.json();
+                
+                const container = document.getElementById('orders-container');
+                
+                if (orders.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty">
+                            <div class="icon">🛍️</div>
+                            <h3>No orders yet</h3>
+                            <p>Scan a shop QR code to start shopping!</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                container.innerHTML = orders.map(order => `
+                    <div class="order-card">
+                        <div class="order-header">
+                            <span class="order-id">Order #${order.id}</span>
+                            <span class="order-status status-${order.status}">${order.status.toUpperCase()}</span>
+                        </div>
+                        <div class="order-date">
+                            ${new Date(order.created_at).toLocaleDateString()} at ${new Date(order.created_at).toLocaleTimeString()}
+                        </div>
+                        <div class="order-items">
+                            ${JSON.parse(order.items).map(item => `
+                                <div class="order-item">
+                                    <span>${item.name} x ${item.quantity}</span>
+                                    <span>R${(item.price * item.quantity).toFixed(2)}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <div class="order-total">
+                            Total: R${order.total.toFixed(2)}
+                        </div>
+                    </div>
+                `).join('');
+                
+            } catch (error) {
+                console.error('Error loading orders:', error);
+                document.getElementById('orders-container').innerHTML = `
+                    <div class="empty">
+                        <div class="icon">❌</div>
+                        <p>Error loading orders. Please try again.</p>
+                    </div>
+                `;
+            }
+        }
+        
+        loadOrders();
+    </script>
+</body>
+</html>

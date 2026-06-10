@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title><%= title %></title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: #f5f5f5; padding: 20px; }
+        .header { background: #333; padding: 20px; border-radius: 15px; margin-bottom: 20px; text-align: center; color: white; }
+        .header h1 { font-size: 24px; margin-bottom: 5px; }
+        .welcome-text { font-size: 14px; opacity: 0.9; }
+        .stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-bottom: 20px; }
+        .stat-card { background: white; padding: 20px; border-radius: 15px; text-align: center; }
+        .stat-value { font-size: 28px; font-weight: bold; color: #FFD700; }
+        .stat-label { font-size: 12px; color: #666; margin-top: 5px; }
+        .section { background: white; border-radius: 15px; padding: 20px; margin-bottom: 20px; }
+        .section h3 { margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid #FFD700; }
+        .product-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; }
+        .order-item { padding: 10px 0; border-bottom: 1px solid #eee; }
+        .back-btn { background: #666; color: white; padding: 12px; border: none; border-radius: 10px; width: 100%; font-size: 16px; cursor: pointer; }
+        .loading { text-align: center; padding: 40px; color: #999; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Analytics Dashboard</h1>
+        <p class="welcome-text">Welcome, <%= shop_name %></p>
+    </div>
+    
+    <div id="analytics-container"><div class="loading">Loading analytics...</div></div>
+    
+    <button class="back-btn" onclick="window.location.href='/merchant-dashboard'">← Back to Dashboard</button>
+    
+    <script>
+        async function loadAnalytics() {
+            try {
+                const response = await fetch('/api/merchant/analytics');
+                const data = await response.json();
+                const html = `
+                    <div class="stats-grid">
+                        <div class="stat-card"><div class="stat-value">R${data.totalRevenue || 0}</div><div class="stat-label">Total Revenue</div></div>
+                        <div class="stat-card"><div class="stat-value">${data.totalOrders || 0}</div><div class="stat-label">Total Orders</div></div>
+                        <div class="stat-card"><div class="stat-value">R${data.todaySales || 0}</div><div class="stat-label">Today's Sales</div></div>
+                        <div class="stat-card"><div class="stat-value">${data.recentOrders ? data.recentOrders.length : 0}</div><div class="stat-label">Recent Orders</div></div>
+                    </div>
+                    <div class="section"><h3>Top Selling Products</h3>${data.topProducts && data.topProducts.length > 0 ? data.topProducts.map(p => `<div class="product-item"><span>${p.name}</span><span>Sold: ${p.times_ordered} times</span><span>R${p.revenue || 0}</span></div>`).join('') : '<p>No products sold yet</p>'}</div>
+                    <div class="section"><h3>Recent Orders</h3>${data.recentOrders && data.recentOrders.length > 0 ? data.recentOrders.slice(0, 5).map(order => `<div class="order-item"><div><strong>Order #${order.id}</strong> - ${order.customer_phone}</div><div>Total: R${order.total} - Status: ${order.status}</div><div>${new Date(order.created_at).toLocaleDateString()}</div></div>`).join('') : '<p>No orders yet</p>'}</div>
+                `;
+                document.getElementById('analytics-container').innerHTML = html;
+            } catch (error) { document.getElementById('analytics-container').innerHTML = '<div class="loading">Error loading analytics</div>'; }
+        }
+        loadAnalytics();
+    </script>
+</body>
+</html>
