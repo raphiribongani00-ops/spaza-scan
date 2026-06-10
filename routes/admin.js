@@ -5,7 +5,6 @@ const { requireAdmin } = require('../middleware/auth');
 // Dashboard stats
 router.get('/stats', requireAdmin, (req, res) => {
     const db = req.app.get('db');
-    
     try {
         const totalMerchants = db.prepare('SELECT COUNT(*) as count FROM merchants').get();
         const totalCustomers = db.prepare('SELECT COUNT(*) as count FROM customers').get();
@@ -24,9 +23,7 @@ router.get('/stats', requireAdmin, (req, res) => {
             SELECT COUNT(*) as count FROM customers 
             WHERE strftime('%Y-%m', created_at) = strftime('%Y-%m', 'now')
         `).get();
-        const ordersByStatus = db.prepare(`
-            SELECT status, COUNT(*) as count FROM orders GROUP BY status
-        `).all();
+        const ordersByStatus = db.prepare(`SELECT status, COUNT(*) as count FROM orders GROUP BY status`).all();
         
         res.json({
             totalMerchants: totalMerchants.count,
@@ -39,36 +36,28 @@ router.get('/stats', requireAdmin, (req, res) => {
             ordersByStatus
         });
     } catch (error) {
-        console.error('Stats error:', error);
         res.status(500).json({ error: error.message });
     }
 });
 
-// Top merchants by revenue
+// Top merchants
 router.get('/top-merchants', requireAdmin, (req, res) => {
     const db = req.app.get('db');
     const limit = req.query.limit || 10;
-    
     try {
         const merchants = db.prepare(`
-            SELECT 
-                m.id,
-                m.shop_name,
-                m.phone,
-                m.email,
-                COUNT(o.id) as total_orders,
-                COALESCE(SUM(o.total), 0) as total_revenue,
-                MAX(o.created_at) as last_order_date
+            SELECT m.id, m.shop_name, m.phone, m.email,
+                   COUNT(o.id) as total_orders,
+                   COALESCE(SUM(o.total), 0) as total_revenue,
+                   MAX(o.created_at) as last_order_date
             FROM merchants m
             LEFT JOIN orders o ON m.id = o.merchant_id AND o.status != 'cancelled'
             GROUP BY m.id
             ORDER BY total_revenue DESC
             LIMIT ?
         `).all(limit);
-        
         res.json(merchants);
     } catch (error) {
-        console.error('Top merchants error:', error);
         res.status(500).json({ error: error.message });
     }
 });
@@ -76,51 +65,30 @@ router.get('/top-merchants', requireAdmin, (req, res) => {
 // Inactive merchants
 router.get('/inactive-merchants', requireAdmin, (req, res) => {
     const db = req.app.get('db');
-    
     try {
         const inactive = db.prepare(`
-            SELECT 
-                m.id,
-                m.shop_name,
-                m.phone,
-                m.email,
-                m.created_at,
-                COUNT(p.id) as product_count,
-                MAX(p.created_at) as last_product_added
+            SELECT m.id, m.shop_name, m.phone, m.email, m.created_at,
+                   COUNT(p.id) as product_count,
+                   MAX(p.created_at) as last_product_added
             FROM merchants m
             LEFT JOIN products p ON m.id = p.merchant_id
             GROUP BY m.id
             HAVING product_count = 0 OR last_product_added < date('now', '-30 days')
             ORDER BY m.created_at DESC
         `).all();
-        
         res.json(inactive);
     } catch (error) {
-        console.error('Inactive merchants error:', error);
         res.status(500).json({ error: error.message });
     }
 });
 
-// Export merchants to CSV
+// Export merchants CSV
 router.get('/export-merchants', requireAdmin, (req, res) => {
     const db = req.app.get('db');
-    
     try {
-        const merchants = db.prepare(`
-            SELECT id, shop_name, phone, email, created_at, status
-            FROM merchants ORDER BY created_at DESC
-        `).all();
-        
+        const merchants = db.prepare(`SELECT id, shop_name, phone, email, created_at, status FROM merchants ORDER BY created_at DESC`).all();
         const headers = ['ID', 'Shop Name', 'Phone', 'Email', 'Signup Date', 'Status'];
-        const rows = merchants.map(m => [
-            m.id,
-            `"${m.shop_name}"`,
-            m.phone,
-            m.email || '',
-            m.created_at,
-            m.status
-        ]);
-        
+        const rows = merchants.map(m => [m.id, `"${m.shop_name}"`, m.phone, m.email || '', m.created_at, m.status]);
         const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
         res.setHeader('Content-Type', 'text/csv');
         res.setHeader('Content-Disposition', 'attachment; filename=merchants_export.csv');
@@ -130,10 +98,9 @@ router.get('/export-merchants', requireAdmin, (req, res) => {
     }
 });
 
-// Export orders to CSV
+// Export orders CSV
 router.get('/export-orders', requireAdmin, (req, res) => {
     const db = req.app.get('db');
-    
     try {
         const orders = db.prepare(`
             SELECT o.id, o.created_at, o.customer_id, c.phone, m.shop_name, o.total, o.status
@@ -142,18 +109,8 @@ router.get('/export-orders', requireAdmin, (req, res) => {
             LEFT JOIN merchants m ON o.merchant_id = m.id
             ORDER BY o.created_at DESC
         `).all();
-        
         const headers = ['Order ID', 'Date', 'Customer ID', 'Customer Phone', 'Merchant', 'Total', 'Status'];
-        const rows = orders.map(o => [
-            o.id,
-            o.created_at,
-            o.customer_id,
-            o.phone || 'N/A',
-            `"${o.shop_name || 'N/A'}"`,
-            o.total,
-            o.status
-        ]);
-        
+        const rows = orders.map(o => [o.id, o.created_at, o.customer_id, o.phone || 'N/A', `"${o.shop_name || 'N/A'}"`, o.total, o.status]);
         const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
         res.setHeader('Content-Type', 'text/csv');
         res.setHeader('Content-Disposition', 'attachment; filename=orders_export.csv');
@@ -161,6 +118,39 @@ router.get('/export-orders', requireAdmin, (req, res) => {
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
+});
+
+// Central Products endpoints (added to the admin router)
+router.get('/central-products', requireAdmin, (req, res) => {
+    const db = req.app.get('db');
+    const { search } = req.query;
+    let query = 'SELECT * FROM central_products';
+    let params = [];
+    if (search) {
+        query += ' WHERE product_name LIKE ? OR barcode LIKE ? OR brand LIKE ?';
+        params.push(`%${search}%`, `%${search}%`, `%${search}%`);
+    }
+    query += ' ORDER BY product_name ASC';
+    const products = db.prepare(query).all(...params);
+    res.json(products);
+});
+
+router.post('/central-products', requireAdmin, (req, res) => {
+    const db = req.app.get('db');
+    const { barcode, product_name, brand, category, default_image } = req.body;
+    try {
+        db.prepare(`INSERT INTO central_products (barcode, product_name, brand, category, default_image) VALUES (?, ?, ?, ?, ?)`)
+          .run(barcode, product_name, brand, category, default_image || '');
+        res.json({ success: true });
+    } catch (error) {
+        res.status(400).json({ error: error.message.includes('UNIQUE') ? 'Barcode already exists' : error.message });
+    }
+});
+
+router.delete('/central-products/:id', requireAdmin, (req, res) => {
+    const db = req.app.get('db');
+    db.prepare('DELETE FROM central_products WHERE id = ?').run(req.params.id);
+    res.json({ success: true });
 });
 
 // Test endpoint

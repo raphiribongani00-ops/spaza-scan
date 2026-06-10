@@ -12,8 +12,8 @@
         .nav-links a { color: #333; text-decoration: none; margin-left: 15px; font-weight: bold; }
         .container { max-width: 800px; margin: 0 auto; }
         .form-card { background: white; border-radius: 15px; padding: 20px; margin-bottom: 20px; }
-        input, select { width: 100%; padding: 12px; margin-bottom: 10px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 14px; }
-        button { background: #FFD700; padding: 12px 20px; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; font-size: 16px; }
+        input, select { width: 100%; padding: 12px; margin-bottom: 10px; border: 2px solid #e0e0e0; border-radius: 10px; }
+        button { background: #FFD700; padding: 12px 20px; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; }
         .product-list { background: white; border-radius: 15px; padding: 20px; }
         .product-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #eee; }
         .product-name { font-weight: bold; }
@@ -22,8 +22,6 @@
         .stats { background: #e8f5e9; padding: 15px; border-radius: 10px; margin-bottom: 20px; text-align: center; }
         .stats span { font-weight: bold; color: #00b894; font-size: 24px; }
         .search-box { margin-bottom: 20px; }
-        .error-message { color: red; margin-top: 10px; display: none; }
-        .success-message { color: green; margin-top: 10px; display: none; }
     </style>
 </head>
 <body>
@@ -50,14 +48,9 @@
                 <option value="Dairy">Dairy</option>
                 <option value="Drinks">Drinks</option>
                 <option value="Snacks">Snacks</option>
-                <option value="Rice & Pasta">Rice & Pasta</option>
-                <option value="Canned Goods">Canned Goods</option>
-                <option value="Household">Household</option>
                 <option value="Other">Other</option>
             </select>
             <input type="url" id="imageUrl" placeholder="Image URL (optional)">
-            <div id="errorMsg" class="error-message"></div>
-            <div id="successMsg" class="success-message"></div>
             <button onclick="addProduct()">Add to Database</button>
         </div>
         
@@ -72,71 +65,34 @@
     </div>
     
     <script>
-        const API_BASE = '/admin/api';
+        // ✅ CORRECT API BASE (matches server.js)
+        const API_BASE = '/api/admin';
         
         async function addProduct() {
-            const barcode = document.getElementById('barcode').value.trim();
-            const product_name = document.getElementById('productName').value.trim();
-            const brand = document.getElementById('brand').value.trim();
-            const category = document.getElementById('category').value;
-            const default_image = document.getElementById('imageUrl').value.trim();
-            
-            // Clear previous messages
-            document.getElementById('errorMsg').style.display = 'none';
-            document.getElementById('successMsg').style.display = 'none';
-            
-            // Validate
-            if (!barcode) {
-                showError('Barcode is required');
+            const product = {
+                barcode: document.getElementById('barcode').value,
+                product_name: document.getElementById('productName').value,
+                brand: document.getElementById('brand').value,
+                category: document.getElementById('category').value,
+                default_image: document.getElementById('imageUrl').value
+            };
+            if (!product.barcode || !product.product_name) {
+                alert('Barcode and Product Name required');
                 return;
             }
-            if (!product_name) {
-                showError('Product Name is required');
-                return;
+            const res = await fetch(`${API_BASE}/central-products`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(product)
+            });
+            if (res.ok) {
+                alert('Product added!');
+                clearForm();
+                loadProducts();
+            } else {
+                const error = await res.json();
+                alert(error.error || 'Error adding product');
             }
-            
-            const product = { barcode, product_name, brand, category, default_image };
-            
-            try {
-                console.log('Sending product:', product);
-                const response = await fetch(`${API_BASE}/central-products`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(product)
-                });
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    showSuccess('Product added successfully!');
-                    clearForm();
-                    loadProducts();
-                    loadStats();
-                } else {
-                    const error = await response.json();
-                    showError(error.error || 'Error adding product');
-                }
-            } catch (err) {
-                console.error('Add product error:', err);
-                showError('Network error: ' + err.message);
-            }
-        }
-        
-        function showError(msg) {
-            const errorDiv = document.getElementById('errorMsg');
-            errorDiv.textContent = msg;
-            errorDiv.style.display = 'block';
-            setTimeout(() => {
-                errorDiv.style.display = 'none';
-            }, 3000);
-        }
-        
-        function showSuccess(msg) {
-            const successDiv = document.getElementById('successMsg');
-            successDiv.textContent = msg;
-            successDiv.style.display = 'block';
-            setTimeout(() => {
-                successDiv.style.display = 'none';
-            }, 3000);
         }
         
         function clearForm() {
@@ -148,21 +104,16 @@
         }
         
         async function loadProducts() {
-            try {
-                const res = await fetch(`${API_BASE}/central-products`);
-                if (!res.ok) throw new Error('Failed to load products');
-                const products = await res.json();
-                displayProducts(products);
-            } catch (err) {
-                console.error('Load products error:', err);
-                document.getElementById('productsList').innerHTML = '<p>Error loading products</p>';
-            }
+            const res = await fetch(`${API_BASE}/central-products`);
+            const products = await res.json();
+            displayProducts(products);
+            document.getElementById('stats').innerHTML = `<span>${products.length}</span> products in database`;
         }
         
         function displayProducts(products) {
             const container = document.getElementById('productsList');
-            if (!products.length) {
-                container.innerHTML = '<p>No products yet. Add your first product above.</p>';
+            if (products.length === 0) {
+                container.innerHTML = '<p>No products yet.</p>';
                 return;
             }
             container.innerHTML = products.map(p => `
@@ -179,38 +130,15 @@
         
         async function searchProducts() {
             const search = document.getElementById('search').value;
-            try {
-                const res = await fetch(`${API_BASE}/central-products?search=${encodeURIComponent(search)}`);
-                const products = await res.json();
-                displayProducts(products);
-            } catch (err) {
-                console.error('Search error:', err);
-            }
+            const res = await fetch(`${API_BASE}/central-products?search=${encodeURIComponent(search)}`);
+            const products = await res.json();
+            displayProducts(products);
         }
         
         async function deleteProduct(id) {
-            if (confirm('Delete this product from the database?')) {
-                try {
-                    const res = await fetch(`${API_BASE}/central-products/${id}`, { method: 'DELETE' });
-                    if (res.ok) {
-                        loadProducts();
-                        loadStats();
-                    } else {
-                        alert('Error deleting product');
-                    }
-                } catch (err) {
-                    alert('Network error');
-                }
-            }
-        }
-        
-        async function loadStats() {
-            try {
-                const res = await fetch(`${API_BASE}/central-products`);
-                const products = await res.json();
-                document.getElementById('stats').innerHTML = `<span>${products.length}</span> products in database`;
-            } catch (err) {
-                document.getElementById('stats').innerHTML = 'Error loading stats';
+            if (confirm('Delete this product?')) {
+                await fetch(`${API_BASE}/central-products/${id}`, { method: 'DELETE' });
+                loadProducts();
             }
         }
         
@@ -221,7 +149,6 @@
         }
         
         loadProducts();
-        loadStats();
     </script>
 </body>
 </html>
